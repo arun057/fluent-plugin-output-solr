@@ -122,13 +122,17 @@ module Fluent::Plugin
     end
 
     def write(chunk)
-      documents = []
+      documents = {}
 
       # Get fluentd tag
       tag = chunk.metadata.tag
 
       chunk.msgpack_each do |time, record|
         record = inject_values_to_record(tag, time, record)
+
+        tenant_id = record['tenant_id']
+
+        documents['tenant_id'] = [] unless documents.has_key?(tenant_id)
 
         # Set unique key and value
         unless record.has_key?(@unique_key) then
@@ -156,20 +160,22 @@ module Fluent::Plugin
           record.merge!({@time_field => tmp_time.strftime('%FT%TZ')})
         end
 
-        # Ignore undefined fields
+        # Move undefined fields to the fluent_extra key
         if @ignore_undefined_fields then
           record.each_key do |key|
             unless @fields.include?(key) then
+              record['fluent_extra'] = {} unless record.has_key?('fluent_extra')
+              record['fluent_extra'][key] = record
               record.delete(key)
             end
           end
         end
 
         # Add record to documents
-        documents << record
+        documents[tenant_id] << record
 
-        # Update when flash size is reached
-        if documents.count >= @flush_size
+        # Update when flash size is reached - inject counts and sums the number of values in each tenant id here
+        if documents.inject(0) { | c, n | c + n[1].count } >= @flush_size
           update documents
           documents.clear
         end
