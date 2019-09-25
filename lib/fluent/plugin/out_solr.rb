@@ -121,6 +121,14 @@ module Fluent::Plugin
       true
     end
 
+    def switch_collection(collection)
+      @solr = RSolr.connect :url => @base_url.end_with?('/') ? @base_url + collection : @base_url + '/' + collection
+    end
+
+    def new_collection_name(collection)
+      'application-logs-' + collection
+    end
+
     def write(chunk)
       documents = {}
 
@@ -186,15 +194,18 @@ module Fluent::Plugin
     end
 
     def update(documents)
-      begin
-        if @mode == MODE_STANDALONE then
-          @solr.add documents, :params => {:commit => @commit_with_flush}
-        elsif @mode == MODE_SOLRCLOUD then
-          @solr.add documents, collection: @collection, :params => {:commit => @commit_with_flush}
+      solr_data.each do |tenant_id, documents|
+        begin
+          if @mode == MODE_STANDALONE then
+            switch_collection(new_collection_name(tenant_id))
+            @solr.add documents, :params => {:commit => @commit_with_flush}
+          elsif @mode == MODE_SOLRCLOUD then
+            @solr.add documents, collection: new_collection_name(tenant_id), :params => {:commit => @commit_with_flush}
+          end
+          log.debug "Sent #{documents.count} document(s) to Solr"
+        rescue Exception
+          log.warn "An error occurred while sending #{documents.count} document(s) to Solr"
         end
-        log.debug "Sent #{documents.count} document(s) to Solr"
-      rescue Exception
-        log.warn "An error occurred while sending #{documents.count} document(s) to Solr"
       end
     end
 
