@@ -138,9 +138,9 @@ module Fluent::Plugin
       chunk.msgpack_each do |time, record|
         record = inject_values_to_record(tag, time, record)
 
-        tenant_id = record['tenant_id']
+        tenant_id = record['tenant_id'] || 'no-tenant'
 
-        documents['tenant_id'] = [] unless documents.has_key?(tenant_id)
+        documents[tenant_id] = [] unless documents.has_key?(tenant_id)
 
         # Set unique key and value
         unless record.has_key?(@unique_key) then
