@@ -193,7 +193,7 @@ module Fluent::Plugin
       update documents unless documents.empty?
     end
 
-    def update(documents)
+    def update(solr_data)
       solr_data.each do |tenant_id, documents|
         begin
           if @mode == MODE_STANDALONE then
