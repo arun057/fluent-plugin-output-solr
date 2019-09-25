@@ -203,8 +203,10 @@ module Fluent::Plugin
             @solr.add documents, collection: new_collection_name(tenant_id), :params => {:commit => @commit_with_flush}
           end
           log.debug "Sent #{documents.count} document(s) to Solr"
-        rescue Exception
+        rescue Exception => e
           log.warn "An error occurred while sending #{documents.count} document(s) to Solr"
+          log.warn e.message
+          log.warn e.backtrace
         end
       end
     end
